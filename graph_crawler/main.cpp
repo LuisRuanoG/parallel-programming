@@ -18,35 +18,31 @@ int main(int argc, char* argv[]) {
 
     std::string actor = argv[1];
 
-    for (char& c : actor) {
-        if (c == ' ')
-            c = '_';
-    }
-
-    std::string url =
-        "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + actor;
-
-    std::cout << "Requesting: " << url << std::endl;
-
-    CURL* curl;
-    CURLcode res;
-    std::string response_data;
-
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
+    CURL* curl = curl_easy_init();
 
     if (!curl) {
         std::cerr << "Failed to initialize curl\n";
         return 1;
     }
 
+    char* encoded = curl_easy_escape(curl, actor.c_str(), actor.length());
+
+    std::string url =
+        "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + std::string(encoded);
+
+    curl_free(encoded);
+
+    std::cout << "Requesting: " << url << std::endl;
+
+    std::string response_data;
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-    res = curl_easy_perform(curl);
+    CURLcode res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
         std::cerr << "curl failed: " << curl_easy_strerror(res) << "\n";
