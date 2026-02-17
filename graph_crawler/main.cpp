@@ -2,11 +2,10 @@
 #include <string>
 #include <curl/curl.h>
 
-std::string response_data;
-
 size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t total_size = size * nmemb;
-    response_data.append((char*)contents, total_size);
+    std::string* response = static_cast<std::string*>(userp);
+    response->append((char*)contents, total_size);
     return total_size;
 }
 
@@ -19,14 +18,24 @@ int main(int argc, char* argv[]) {
 
     std::string actor = argv[1];
 
+    
     for (char& c : actor) {
-        if (c == ' ') c = '_';
+        if (c == ' ')
+            c = '_';
     }
 
-    std::string url = "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + actor;
+    
+    std::string url =
+        "https://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + actor;
+
+    std::cout << "Requesting: " << url << std::endl;
+
+    CURL* curl;
+    CURLcode res;
+    std::string response_data;
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    CURL* curl = curl_easy_init();
+    curl = curl_easy_init();
 
     if (!curl) {
         std::cerr << "Failed to initialize curl\n";
@@ -35,13 +44,22 @@ int main(int argc, char* argv[]) {
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
 
-    CURLcode res = curl_easy_perform(curl);
+    
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+    res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
         std::cerr << "curl failed: " << curl_easy_strerror(res) << "\n";
     } else {
-        std::cout << response_data << "\n";
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        std::cout << "HTTP code: " << http_code << "\n\n";
+        std::cout << response_data << std::endl;
     }
 
     curl_easy_cleanup(curl);
