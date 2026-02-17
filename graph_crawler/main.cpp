@@ -1,11 +1,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <queue>
+#include <unordered_set>
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 
 using namespace rapidjson;
 
+// callback function to write response data into a string
 size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t total_size = size * nmemb;
     std::string* response = static_cast<std::string*>(userp);
@@ -13,25 +16,15 @@ size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
     return total_size;
 }
 
-int main(int argc, char* argv[]) {
+//get neighbors of a node (actor) from the API
+std::vector<std::string> get_neighbors(const std::string& node) {
 
-    if (argc != 3) {
-        std::cerr << "Usage: ./crawler \"Actor Name\" depth\n";
-        return 1;
-    }
-
-    std::string actor = argv[1];
-
-    curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL* curl = curl_easy_init();
+    std::vector<std::string> neighbor_list;
 
-    if (!curl) {
-        std::cerr << "Failed to initialize curl\n";
-        return 1;
-    }
+    if (!curl) return neighbor_list;
 
-    // URL-encode the actor name
-    char* encoded = curl_easy_escape(curl, actor.c_str(), actor.length());
+    char* encoded = curl_easy_escape(curl, node.c_str(), node.length());
 
     std::string url =
         "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + std::string(encoded);
@@ -47,37 +40,73 @@ int main(int argc, char* argv[]) {
     CURLcode res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
-        std::cerr << "curl failed: " << curl_easy_strerror(res) << "\n";
-        return 1;
+        curl_easy_cleanup(curl);
+        return neighbor_list;
     }
 
     curl_easy_cleanup(curl);
-    curl_global_cleanup();
-
-
-
 
     Document doc;
     doc.Parse(response_data.c_str());
 
-    if (!doc.HasMember("neighbors") || !doc["neighbors"].IsArray()) {
-        std::cerr << "Invalid JSON or no neighbors found.\n";
-        return 1;
-    }
+    if (!doc.HasMember("neighbors") || !doc["neighbors"].IsArray())
+        return neighbor_list;
 
     const Value& neighbors = doc["neighbors"];
-
-    std::vector<std::string> neighbor_list;
 
     for (SizeType i = 0; i < neighbors.Size(); i++) {
         neighbor_list.push_back(neighbors[i].GetString());
     }
 
-    std::cout << "Neighbors of " << actor << ":\n";
+    return neighbor_list;
+}
 
-    for (const auto& n : neighbor_list) {
-        std::cout << " - " << n << "\n";
+//BFS
+int main(int argc, char* argv[]) {
+
+    if (argc != 3) {
+        std::cerr << "Usage: ./crawler \"Actor Name\" depth\n";
+        return 1;
     }
+
+    std::string start = argv[1];
+    int max_depth = std::stoi(argv[2]);
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    std::queue<std::pair<std::string, int>> q;
+    std::unordered_set<std::string> visited;
+
+    q.push({start, 0});
+    visited.insert(start);
+
+    std::cout << "BFS Traversal:\n";
+
+    while (!q.empty()) {
+
+        auto current = q.front();
+        q.pop();
+
+        std::string node = current.first;
+        int depth = current.second;
+
+        std::cout << "Depth " << depth << ": " << node << "\n";
+
+        if (depth >= max_depth)
+            continue;
+
+        std::vector<std::string> neighbors = get_neighbors(node);
+
+        for (const auto& neighbor : neighbors) {
+
+            if (visited.find(neighbor) == visited.end()) {
+                visited.insert(neighbor);
+                q.push({neighbor, depth + 1});
+            }
+        }
+    }
+
+    curl_global_cleanup();
 
     return 0;
 }
