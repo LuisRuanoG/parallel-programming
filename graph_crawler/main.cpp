@@ -18,15 +18,13 @@ int main(int argc, char* argv[]) {
 
     std::string actor = argv[1];
 
-    
     for (char& c : actor) {
         if (c == ' ')
             c = '_';
     }
 
-    
     std::string url =
-        "https://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + actor;
+        "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/" + actor;
 
     std::cout << "Requesting: " << url << std::endl;
 
@@ -46,10 +44,7 @@ int main(int argc, char* argv[]) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
 
-    
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
     res = curl_easy_perform(curl);
 
@@ -58,6 +53,7 @@ int main(int argc, char* argv[]) {
     } else {
         long http_code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
         std::cout << "HTTP code: " << http_code << "\n\n";
         std::cout << response_data << std::endl;
     }
