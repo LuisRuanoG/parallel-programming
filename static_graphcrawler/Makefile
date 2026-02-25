@@ -1,14 +1,22 @@
-#CXXFLAGS=-I path/to/rapidjson
-LDFLAGS=-lcurl
-LD=g++
-CC=g++
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -I./rapidjson/include
+LDFLAGS = -lcurl
 
 all: level_client par_level_client
 
+# -------- SEQUENTIAL --------
 level_client: level_client.o
-	$(LD) $< -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
+level_client.o: level_client.cpp
+	$(CXX) $(CXXFLAGS) -c level_client.cpp
 
+# -------- PARALLEL --------
+par_level_client: par_level_client.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+par_level_client.o: par_level_client.cpp
+	$(CXX) $(CXXFLAGS) -c par_level_client.cpp
 
 clean:
-	-rm level_client level_client.o
+	rm -f level_client par_level_client *.o
