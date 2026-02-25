@@ -1,0 +1,23 @@
+Parallel Graph Traversal - Performance Summary
+Platform: Centaurus
+Compiler: g++ -std=c++17 -O2
+Max Threads: 8
+
+Test Configuration:
+Start Node: "Tom Hanks"
+Depth: 2
+
+Sequential Version:
+Time to crawl: 3.30099 seconds
+
+Parallel Version:
+Time to crawl: 0.561352 seconds
+
+Speedup:
+3.30099 / 0.561352 ≈ 5.88x
+
+Observations:
+- Parallel execution significantly reduces runtime.
+- Speedup is limited by network latency and server response time.
+- BFS is executed level-by-level.
+- JSON validation prevents crashes under high concurrency.
