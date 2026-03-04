@@ -32,7 +32,8 @@ bool debug = false;
 mutex visited_mutex;
 mutex result_mutex;
 
-atomic<int> active_workers(0);
+// counter to track work in the system
+atomic<int> tasks_in_system(0);
 
 // Updated service URL
 const string SERVICE_URL = "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/";
@@ -130,6 +131,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
     // push starting node
     queue.push(make_pair(start,0));
+    tasks_in_system++; // track work
     visited.insert(start);
 
     int num_threads = 8;
@@ -145,12 +147,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
             pair<string,int> item;
 
-            while(true){
-
-                if(!queue.pop(item))
-                    break;
-
-                active_workers++;
+            while(queue.pop(item)){
 
                 string node = item.first;
                 int level = item.second;
@@ -161,7 +158,6 @@ vector<string> parallel_bfs(const string& start, int depth) {
                 }
 
                 if(level < depth){
-
                     auto neighbors = get_neighbors(fetch_neighbors(curl,node));
 
                     for(auto &neighbor : neighbors){
@@ -171,14 +167,17 @@ vector<string> parallel_bfs(const string& start, int depth) {
                         if(!visited.count(neighbor)){
 
                             visited.insert(neighbor);
+
                             queue.push(make_pair(neighbor, level+1));
+
+                            tasks_in_system++; // new work added
                         }
                     }
                 }
 
-                active_workers--;
+                tasks_in_system--; // finished processing node
 
-                if(active_workers == 0)
+                if(tasks_in_system == 0)
                     queue.set_finished();
             }
 
