@@ -183,6 +183,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
     }
 
 
+    queue.set_finished();
     for(auto &t : workers)
         t.join();
 
