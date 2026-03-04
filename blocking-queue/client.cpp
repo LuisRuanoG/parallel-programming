@@ -12,6 +12,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include "blocking_queue.h"
 
 using namespace std;
@@ -30,6 +31,8 @@ bool debug = false;
 
 mutex visited_mutex;
 mutex result_mutex;
+
+atomic<int> active_workers(0);
 
 // Updated service URL
 const string SERVICE_URL = "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/";
@@ -133,7 +136,6 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
     vector<thread> workers;
 
-
     for(int i=0;i<num_threads;i++){
 
         workers.emplace_back([&](){
@@ -143,7 +145,12 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
             pair<string,int> item;
 
-            while(queue.pop(item)){
+            while(true){
+
+                if(!queue.pop(item))
+                    break;
+
+                active_workers++;
 
                 string node = item.first;
                 int level = item.second;
@@ -153,10 +160,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
                     result.push_back(node);
                 }
 
-                if(level >= depth)
-                    continue;
-
-                try{
+                if(level < depth){
 
                     auto neighbors = get_neighbors(fetch_neighbors(curl,node));
 
@@ -167,26 +171,23 @@ vector<string> parallel_bfs(const string& start, int depth) {
                         if(!visited.count(neighbor)){
 
                             visited.insert(neighbor);
-
                             queue.push(make_pair(neighbor, level+1));
                         }
                     }
-
-                }catch(...){
-
-                    cerr<<"Error processing "<<node<<endl;
                 }
+
+                active_workers--;
+
+                if(active_workers == 0)
+                    queue.set_finished();
             }
 
             curl_easy_cleanup(curl);
         });
     }
 
-
-    queue.set_finished();
     for(auto &t : workers)
         t.join();
-
 
     return result;
 }
