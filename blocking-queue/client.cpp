@@ -32,7 +32,7 @@ bool debug = false;
 mutex visited_mutex;
 mutex result_mutex;
 
-// counter to track work in the system
+// counter to track work remaining in the system
 atomic<int> tasks_in_system(0);
 
 // Updated service URL
@@ -131,7 +131,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
     // push starting node
     queue.push(make_pair(start,0));
-    tasks_in_system++; // track work
+    tasks_in_system = 1; // start with one task
     visited.insert(start);
 
     int num_threads = 8;
@@ -158,6 +158,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
                 }
 
                 if(level < depth){
+
                     auto neighbors = get_neighbors(fetch_neighbors(curl,node));
 
                     for(auto &neighbor : neighbors){
@@ -168,14 +169,14 @@ vector<string> parallel_bfs(const string& start, int depth) {
 
                             visited.insert(neighbor);
 
-                            queue.push(make_pair(neighbor, level+1));
+                            tasks_in_system++; // new task before pushing
 
-                            tasks_in_system++; // new work added
+                            queue.push(make_pair(neighbor, level+1));
                         }
                     }
                 }
 
-
+                // finished processing this node
                 if(--tasks_in_system == 0)
                     queue.set_finished();
             }
