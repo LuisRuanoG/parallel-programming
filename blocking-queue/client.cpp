@@ -141,7 +141,7 @@ vector<string> parallel_bfs(CURL* curl, const string& start, int depth) {
 
                 try{
 
-                    for(auto &neighbor : get_neighbors(fetch_neighbors(curl,node))){
+                    for(auto &neighbor : get_neighbors(fetch_neighbors(local_curl,node))){
 
                         lock_guard<mutex> lock(visited_mutex);
 
@@ -182,6 +182,8 @@ int main(int argc, char* argv[]) {
         cerr << "Error: Depth must be an integer.\n";
         return 1;
     }
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
 
     CURL* curl = curl_easy_init();
     if (!curl) {
