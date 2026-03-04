@@ -1,0 +1,12 @@
+Graph Crawler Timings
+
+Node used: Tom Hanks
+
+Sequential Version (1 thread)
+Depth 4: 481.477s
+
+Parallel Version (8 threads)
+Depth 4: 60.8206s
+
+Speedup:
+481.477 / 60.8206 ≈ 7.9x
