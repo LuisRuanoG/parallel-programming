@@ -175,9 +175,8 @@ vector<string> parallel_bfs(const string& start, int depth) {
                     }
                 }
 
-                tasks_in_system--; // finished processing node
 
-                if(tasks_in_system == 0)
+                if(--tasks_in_system == 0)
                     queue.set_finished();
             }
 
