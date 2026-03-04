@@ -134,7 +134,7 @@ vector<string> parallel_bfs(const string& start, int depth) {
     tasks_in_system++; // track work
     visited.insert(start);
 
-    int num_threads = 8;
+    int num_threads = 4;
 
     vector<thread> workers;
 
