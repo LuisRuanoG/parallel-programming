@@ -1,12 +1,6 @@
 cat << 'EOF' > README.md
 # Parallel Graph Traversal with Web API
 
-## Author
-Luis Ruano  
-ITSC - Parallel Programming  
-
----
-
 ## Design Approach
 
 ### Level-by-Level BFS
