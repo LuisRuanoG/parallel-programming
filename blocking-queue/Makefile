@@ -1,3 +1,4 @@
+CXXFLAGS=-I rapidjson/include
 LDFLAGS=-lcurl -lpthread
 LD=g++
 CC=g++
