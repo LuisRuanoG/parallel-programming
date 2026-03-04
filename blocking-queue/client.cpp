@@ -8,10 +8,14 @@
 #include <stdexcept>
 #include "rapidjson/error/error.h"
 #include "rapidjson/reader.h"
+#include <rapidjson/document.h>
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include "blocking_queue.h"
 
+using namespace std;
+using namespace rapidjson;
 
 struct ParseException : std::runtime_error, rapidjson::ParseResult {
     ParseException(rapidjson::ParseErrorCode code, const char* msg, size_t offset) : 
@@ -22,20 +26,16 @@ struct ParseException : std::runtime_error, rapidjson::ParseResult {
 #define RAPIDJSON_PARSE_ERROR_NORETURN(code, offset) \
     throw ParseException(code, #code, offset)
 
-#include <rapidjson/document.h>
-#include <chrono>
-
-using namespace std;
-using namespace rapidjson;
-
 bool debug = false;
+
 mutex visited_mutex;
 mutex result_mutex;
 
 // Updated service URL
 const string SERVICE_URL = "http://hollywood-graph-crawler.bridgesuncc.org/neighbors/";
 
-// Function to HTTP ecnode parts of URLs. for instance, replace spaces with '%20' for URLs
+
+// Function to HTTP encode parts of URLs. for instance, replace spaces with '%20' for URLs
 string url_encode(CURL* curl, string input) {
   char* out = curl_easy_escape(curl, input.c_str(), input.size());
   string s = out;
@@ -43,12 +43,14 @@ string url_encode(CURL* curl, string input) {
   return s;
 }
 
+
 // Callback function for writing response data
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, string* output) {
     size_t totalSize = size * nmemb;
     output->append((char*)contents, totalSize);
     return totalSize;
 }
+
 
 // Function to fetch neighbors using libcurl with debugging
 string fetch_neighbors(CURL* curl, const string& node) {
@@ -88,48 +90,63 @@ string fetch_neighbors(CURL* curl, const string& node) {
     return (res == CURLE_OK) ? response : "{}";
 }
 
+
 // Function to parse JSON and extract neighbors
 vector<string> get_neighbors(const string& json_str) {
+
     vector<string> neighbors;
+
     try {
+
       Document doc;
       doc.Parse(json_str.c_str());
-      
+
       if (doc.HasMember("neighbors") && doc["neighbors"].IsArray()) {
+
         for (const auto& neighbor : doc["neighbors"].GetArray())
-	  neighbors.push_back(neighbor.GetString());
+	        neighbors.push_back(neighbor.GetString());
       }
+
     } catch (const ParseException& e) {
+
       std::cerr<<"Error while parsing JSON: "<<json_str<<std::endl;
       throw e;
     }
+
     return neighbors;
 }
 
-// BFS Traversal Function
-vector<string> parallel_bfs(CURL* curl, const string& start, int depth) {
+
+// Parallel BFS Traversal Function using Blocking Queue
+vector<string> parallel_bfs(const string& start, int depth) {
 
     BlockingQueue<pair<string,int>> queue;
+
     unordered_set<string> visited;
     vector<string> result;
 
-    queue.push({start,0});
+    // push starting node
+    queue.push(make_pair(start,0));
     visited.insert(start);
 
     int num_threads = 8;
 
     vector<thread> workers;
 
+
     for(int i=0;i<num_threads;i++){
 
         workers.emplace_back([&](){
+
+            // each thread gets its own CURL handle
+            CURL* curl = curl_easy_init();
 
             pair<string,int> item;
 
             while(queue.pop(item)){
 
-                auto node = item.first;
-                auto level = item.second;
+                string node = item.first;
+                int level = item.second;
 
                 {
                     lock_guard<mutex> lock(result_mutex);
@@ -141,7 +158,9 @@ vector<string> parallel_bfs(CURL* curl, const string& start, int depth) {
 
                 try{
 
-                    for(auto &neighbor : get_neighbors(fetch_neighbors(local_curl,node))){
+                    auto neighbors = get_neighbors(fetch_neighbors(curl,node));
+
+                    for(auto &neighbor : neighbors){
 
                         lock_guard<mutex> lock(visited_mutex);
 
@@ -149,33 +168,41 @@ vector<string> parallel_bfs(CURL* curl, const string& start, int depth) {
 
                             visited.insert(neighbor);
 
-                            queue.push({neighbor, level+1});
+                            queue.push(make_pair(neighbor, level+1));
                         }
                     }
 
                 }catch(...){
+
                     cerr<<"Error processing "<<node<<endl;
                 }
             }
+
+            curl_easy_cleanup(curl);
         });
     }
+
 
     for(auto &t : workers)
         t.join();
 
-    queue.set_finished();
 
     return result;
 }
 
+
+
 int main(int argc, char* argv[]) {
+
     if (argc != 3) {
         cerr << "Usage: " << argv[0] << " <node_name> <depth>\n";
         return 1;
     }
 
     string start_node = argv[1];     // example "Tom%20Hanks"
+
     int depth;
+
     try {
         depth = stoi(argv[2]);
     } catch (const exception& e) {
@@ -185,25 +212,18 @@ int main(int argc, char* argv[]) {
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        cerr << "Failed to initialize CURL" << endl;
-        return -1;
-    }
-
-
     const auto start{std::chrono::steady_clock::now()};
+
     
-    
-    for (const auto& node : parallel_bfs(curl, start_node, depth))
+    for (const auto& node : parallel_bfs(start_node, depth))
         cout << "- " << node << "\n";
 
     const auto finish{std::chrono::steady_clock::now()};
     const std::chrono::duration<double> elapsed_seconds{finish - start};
-    std::cout << "Time to crawl: "<<elapsed_seconds.count() << "s\n";
-    
-    curl_easy_cleanup(curl);
 
-    
+    std::cout << "Time to crawl: "<<elapsed_seconds.count() << "s\n";
+
+    curl_global_cleanup();
+
     return 0;
 }
