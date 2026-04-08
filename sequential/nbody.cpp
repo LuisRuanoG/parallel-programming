@@ -198,7 +198,7 @@ int main(int argc, char* argv[]) {
 
   OmpLoop omp;
   omp.setNbThread(nbthreads);
-  omp.setGranularity(1);
+  omp.setGranularity(50);
   
   simulation s(1);
 
