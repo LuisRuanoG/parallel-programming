@@ -1,0 +1,13 @@
+N-Body Timing Results
+
+Solar system (planet, dt=200, nbstep=500000, printevery=10000)
+1 thread: 1.493s
+8 threads: 12.078s
+
+Random 100 particles (dt=1, nbstep=10000, printevery=100)
+1 thread: 0.762s
+8 threads: 1.189s
+
+Random 1000 particles (dt=1, nbstep=10000, printevery=100)
+1 thread: 69.936s
+8 threads: 40.161s
