@@ -1,0 +1,22 @@
+Parallel Merge Sort Performance Results
+
+Threshold used: 1000
+
+Array size: 10000
+1 thread: 0.000641411
+8 threads: 0.000936355
+
+Array size: 100000
+1 thread: 0.0077698
+8 threads: 0.00293404
+
+Array size: 1000000
+1 thread: 0.0893196
+2 threads: 0.0483943
+4 threads: 0.0385669
+8 threads: 0.0276161
+
+
+- For very small arrays (10000), the parallel version is slower due to tasking overhead.
+- For medium and large arrays, the parallel version is faster.
+- The best result measured here was for 1000000 elements with 8 threads.
