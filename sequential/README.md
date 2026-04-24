@@ -75,3 +75,25 @@ For small workloads, the parallel version can be slower because thread schedulin
 
 For larger workloads such as 1000 particles, the parallel version is faster and shows a clear speedup.
 EOF
+
+## Comparison of Sequential vs Parallel Performance
+
+The parallel implementation does not always outperform the sequential version.
+
+For small workloads (e.g., 10 or 100 particles), the parallel version is slower due to thread creation overhead and scheduling costs.
+
+For larger workloads (e.g., 1000 particles), the parallel version shows clear performance improvements.
+
+In our experiments:
+- Small inputs: parallel is slower
+- Large inputs: parallel is faster
+
+The achieved speedup for 1000 particles is approximately:
+
+Speedup ≈ 69.936 / 40.161 ≈ 1.7x
+
+This is lower than the ideal speedup due to:
+- memory contention
+- cache effects
+- scheduling overhead
+- shared CPU resources on Centaurus
